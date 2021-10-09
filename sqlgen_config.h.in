@@ -1,0 +1,2 @@
+#define SQLGEN_VERSION_MAJOR @sqlite-cpp-sqlgen_VERSION_MAJOR@
+#define SQLGEN_VERSION_MINOR @sqlite-cpp-sqlgen_VERSION_MINOR@
