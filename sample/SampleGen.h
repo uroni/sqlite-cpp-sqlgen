@@ -29,10 +29,10 @@ public:
 
 private:
     //@-SQLGenVariablesBegin
-	std::unique_ptr<sqlgen::DatabaseQuery> q_getUsers;
-	std::unique_ptr<sqlgen::DatabaseQuery> q_getUserById;
-	std::unique_ptr<sqlgen::DatabaseQuery> q_getUserByName;
-	std::unique_ptr<sqlgen::DatabaseQuery> q_addUser;
-	std::unique_ptr<sqlgen::DatabaseQuery> q_deleteUser;
+	sqlgen::DatabaseQuery q_getUsers;
+	sqlgen::DatabaseQuery q_getUserById;
+	sqlgen::DatabaseQuery q_getUserByName;
+	sqlgen::DatabaseQuery q_addUser;
+	sqlgen::DatabaseQuery q_deleteUser;
 	//@-SQLGenVariablesEnd
 };

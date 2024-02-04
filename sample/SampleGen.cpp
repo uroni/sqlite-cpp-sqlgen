@@ -11,11 +11,11 @@
 */
 std::vector<Users::User> Users::getUsers()
 {
-	if(!q_getUsers)
+	if(!q_getUsers.prepared())
 	{
-		q_getUsers=std::make_unique<sqlgen::DatabaseQuery>(db.prepare("SELECT id, name, password FROM users"));
+		q_getUsers=db.prepare("SELECT id, name, password FROM users");
 	}
-	sqlgen::db_results res=q_getUsers->read();
+	sqlgen::db_results res=q_getUsers.read();
 	std::vector<Users::User> ret;
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
@@ -36,13 +36,13 @@ std::vector<Users::User> Users::getUsers()
 */
 Users::User Users::getUserById(int64_t id)
 {
-	if(!q_getUserById)
+	if(!q_getUserById.prepared())
 	{
-		q_getUserById=std::make_unique<sqlgen::DatabaseQuery>(db.prepare("SELECT id, name, password FROM users WHERE id=?"));
+		q_getUserById=db.prepare("SELECT id, name, password FROM users WHERE id=?");
 	}
-	q_getUserById->bind(id);
-	sqlgen::db_results res=q_getUserById->read();
-	q_getUserById->reset();
+	q_getUserById.bind(id);
+	sqlgen::db_results res=q_getUserById.read();
+	q_getUserById.reset();
 	User ret = { false, 0, "", "" };
 	if(!res.empty())
 	{
@@ -63,13 +63,13 @@ Users::User Users::getUserById(int64_t id)
 */
 Users::User Users::getUserByName(const std::string& name)
 {
-	if(!q_getUserByName)
+	if(!q_getUserByName.prepared())
 	{
-		q_getUserByName=std::make_unique<sqlgen::DatabaseQuery>(db.prepare("SELECT id, name, password FROM users WHERE name=?"));
+		q_getUserByName=db.prepare("SELECT id, name, password FROM users WHERE name=?");
 	}
-	q_getUserByName->bind(name);
-	sqlgen::db_results res=q_getUserByName->read();
-	q_getUserByName->reset();
+	q_getUserByName.bind(name);
+	sqlgen::db_results res=q_getUserByName.read();
+	q_getUserByName.reset();
 	User ret = { false, 0, "", "" };
 	if(!res.empty())
 	{
@@ -90,14 +90,14 @@ Users::User Users::getUserByName(const std::string& name)
 */
 int64_t Users::addUser(const std::string& name, const std::string& password)
 {
-	if(!q_addUser)
+	if(!q_addUser.prepared())
 	{
-		q_addUser=std::make_unique<sqlgen::DatabaseQuery>(db.prepare("INSERT INTO users (name, password) VALUES (?, ?) RETURNING id"));
+		q_addUser=db.prepare("INSERT INTO users (name, password) VALUES (?, ?) RETURNING id");
 	}
-	q_addUser->bind(name);
-	q_addUser->bind(password);
-	sqlgen::db_results res=q_addUser->read();
-	q_addUser->reset();
+	q_addUser.bind(name);
+	q_addUser.bind(password);
+	sqlgen::db_results res=q_addUser.read();
+	q_addUser.reset();
 	assert(!res.empty());
 	return std::atoll(res.at(0)["id"].c_str());
 }
@@ -110,13 +110,13 @@ int64_t Users::addUser(const std::string& name, const std::string& password)
 */
 void Users::deleteUser(int64_t id)
 {
-	if(!q_deleteUser)
+	if(!q_deleteUser.prepared())
 	{
-		q_deleteUser=std::make_unique<sqlgen::DatabaseQuery>(db.prepare("DELETE FROM users WHERE id=?"));
+		q_deleteUser=db.prepare("DELETE FROM users WHERE id=?");
 	}
-	q_deleteUser->bind(id);
-	q_deleteUser->write();
-	q_deleteUser->reset();
+	q_deleteUser.bind(id);
+	q_deleteUser.write();
+	q_deleteUser.reset();
 }
 
 

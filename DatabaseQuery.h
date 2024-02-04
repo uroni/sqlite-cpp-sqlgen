@@ -19,6 +19,7 @@ namespace sqlgen
 
 		DatabaseQuery(const std::string& pStmt_str, sqlite3_stmt* prepared_statement, Database* pDB);
 	public:		
+		DatabaseQuery() {}
 		~DatabaseQuery();
 
 		DatabaseQuery(const DatabaseQuery&) = delete;
@@ -27,6 +28,11 @@ namespace sqlgen
 		}
 		DatabaseQuery& operator=(const DatabaseQuery&) = delete;
 		DatabaseQuery& operator=(DatabaseQuery&& other);
+
+		bool prepared()
+		{
+			return ps != nullptr;
+		}
 
 		virtual void bind(const std::string& str);
 		virtual void bind(int p);
@@ -59,9 +65,9 @@ namespace sqlgen
 	private:
 		bool Execute(int timeoutms);
 
-		sqlite3_stmt* ps;
+		sqlite3_stmt* ps = nullptr;
 		std::string stmt_str;
-		Database* db;
+		Database* db = nullptr;
 		int curr_idx = 1;
 		std::unique_ptr<DatabaseCursor> _cursor;
 	};

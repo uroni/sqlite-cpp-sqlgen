@@ -801,21 +801,21 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, GeneratedDa
 	funcdecl+=");";
 
 	gen_data.funcdecls+="\t"+funcdecl+"\r\n";
-	gen_data.variables+="\tstd::unique_ptr<sqlgen::DatabaseQuery> "+query_name+";\r\n";
+	gen_data.variables+="\tsqlgen::DatabaseQuery "+query_name+";\r\n";
 
-	code+="\tif(!"+query_name+")\r\n\t{\r\n\t";
-	code+="\t"+query_name+"=std::make_unique<sqlgen::DatabaseQuery>(db.prepare(\""+parsedSql+"\"));\r\n";
+	code+="\tif(!"+query_name+".prepared())\r\n\t{\r\n\t";
+	code+="\t"+query_name+"=db.prepare(\""+parsedSql+"\");\r\n";
 	code+="\t}\r\n";
 
 	for(size_t i=0;i<params.size();++i)
 	{
 		if(params[i].type=="blob")
 		{
-			code+="\t"+query_name+"->bind("+params[i].name+".data(), "+params[i].name+".size());\r\n";
+			code+="\t"+query_name+".bind("+params[i].name+".data(), "+params[i].name+".size());\r\n";
 		}
 		else
 		{
-			code+="\t"+query_name+"->bind("+params[i].name+");\r\n";
+			code+="\t"+query_name+".bind("+params[i].name+");\r\n";
 		}
 	}
 
@@ -823,7 +823,7 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, GeneratedDa
 
 	if(stmt_type==StatementType_Select || !return_types.empty())
 	{
-		code+="\tsqlgen::db_results res="+query_name+"->read();\r\n";
+		code+="\tsqlgen::db_results res="+query_name+".read();\r\n";
 	}
 	else if(stmt_type==StatementType_Delete
 		|| stmt_type==StatementType_Insert
@@ -833,18 +833,18 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, GeneratedDa
 	{
 		if(return_type=="bool")
 		{
-			code+="\tbool ret = "+query_name+"->write();\r\n";
+			code+="\tbool ret = "+query_name+".write();\r\n";
 			has_return=true;
 		}
 		else
 		{
-			code+="\t"+query_name+"->write();\r\n";
+			code+="\t"+query_name+".write();\r\n";
 		}
 	}
 
 	if(!params.empty())
 	{
-		code+="\t"+query_name+"->reset();\r\n";
+		code+="\t"+query_name+".reset();\r\n";
 	}
 
 	if(has_return)
