@@ -27,6 +27,8 @@ add_library(SqliteCppGen Database.cpp
                          sqlite/sqlite3.c
                         sample/SampleGen.cpp)
 
+target_include_directories (SqliteCppGen PUBLIC "${CMAKE_CURRENT_LIST_DIR}")
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
