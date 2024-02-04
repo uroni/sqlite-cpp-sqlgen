@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <thread>
 #include <chrono>
+#include <utility>
 #include "stringtools.h"
 #include "DatabaseLogger.h"
 
@@ -18,24 +19,32 @@ using namespace std::chrono_literals;
 using namespace sqlgen;
 
 DatabaseQuery::DatabaseQuery(const std::string &pStmt_str, sqlite3_stmt *prepared_statement, Database *pDB)
-	: stmt_str(pStmt_str), cursor(NULL)
+	: stmt_str(pStmt_str), ps(prepared_statement), db(pDB)
 {
-	ps=prepared_statement;
-	curr_idx=1;
-	db=pDB;
 }
 
 DatabaseQuery::~DatabaseQuery()
 {
+	if(ps==nullptr)
+		return;
+
 	int err=sqlite3_finalize(ps);
 	if( err!=SQLITE_OK && err!=SQLITE_BUSY && err!=SQLITE_IOERR_BLOCKED )
 		getDatabaseLogger()->Log("SQL: "+(std::string)sqlite3_errmsg(db->getDatabase())+ " Stmt: ["+stmt_str+"]", LL_ERROR);
+}
 
-	delete cursor;
+DatabaseQuery& DatabaseQuery::operator=(DatabaseQuery&& other)
+{
+	ps = std::exchange(other.ps, nullptr);
+	stmt_str = std::exchange(other.stmt_str, {});
+	db = std::exchange(other.db, nullptr);
+	curr_idx = other.curr_idx;
+	_cursor = std::exchange(other._cursor, {});
+	return *this;
 }
 
 
-void DatabaseQuery::Bind(const std::string &str)
+void DatabaseQuery::bind(const std::string &str)
 {
 	int err=sqlite3_bind_text(ps, curr_idx, str.c_str(), (int)str.size(), SQLITE_TRANSIENT);
 	if( err!=SQLITE_OK )
@@ -43,7 +52,7 @@ void DatabaseQuery::Bind(const std::string &str)
 	++curr_idx;
 }
 
-void DatabaseQuery::Bind(const char* buffer, unsigned int bsize)
+void DatabaseQuery::bind(const char* buffer, size_t bsize)
 {
 	int err=sqlite3_bind_blob(ps, curr_idx, buffer, bsize, SQLITE_TRANSIENT);
 	if( err!=SQLITE_OK )
@@ -51,7 +60,7 @@ void DatabaseQuery::Bind(const char* buffer, unsigned int bsize)
 	++curr_idx;
 }
 
-void DatabaseQuery::Bind(int p)
+void DatabaseQuery::bind(int p)
 {
 	int err=sqlite3_bind_int(ps, curr_idx, p);
 	if( err!=SQLITE_OK )
@@ -59,12 +68,14 @@ void DatabaseQuery::Bind(int p)
 	++curr_idx;
 }
 
-void DatabaseQuery::Bind(unsigned int p)
+#if defined(_WIN64) || defined(_LP64)
+void DatabaseQuery::bind(unsigned int p)
 {
-	Bind((unsigned long long)p);
+	bind(size_t{p});
 }
+#endif
 
-void DatabaseQuery::Bind(double p)
+void DatabaseQuery::bind(double p)
 {
 	int err=sqlite3_bind_double(ps, curr_idx, p);
 	if( err!=SQLITE_OK )
@@ -72,7 +83,7 @@ void DatabaseQuery::Bind(double p)
 	++curr_idx;
 }
 
-void DatabaseQuery::Bind(long long int p)
+void DatabaseQuery::bind(int64_t p)
 {
 	int err=sqlite3_bind_int64(ps, curr_idx, p);
 	if( err!=SQLITE_OK )
@@ -81,20 +92,20 @@ void DatabaseQuery::Bind(long long int p)
 }
 
 #if defined(_WIN64) || defined(_LP64)
-void DatabaseQuery::Bind(size_t p)
+void DatabaseQuery::bind(size_t p)
 {
-	Bind((long long int)p);
+	bind(static_cast<int64_t>(p));
 }
 #endif
 
-void DatabaseQuery::Reset(void)
+void DatabaseQuery::reset()
 {
 	sqlite3_reset(ps);
 	//sqlite3_clear_bindings(ps);
 	curr_idx=1;
 }
 
-bool DatabaseQuery::Write(int timeoutms)
+bool DatabaseQuery::write(int timeoutms)
 {
 	return Execute(timeoutms);
 }
@@ -174,17 +185,17 @@ bool DatabaseQuery::Execute(int timeoutms)
 	return true;
 }
 
-void DatabaseQuery::setupStepping(int *timeoutms)
+void DatabaseQuery::setupStepping(int timeoutms)
 {
-	if(timeoutms!=NULL && *timeoutms>=0)
+	if(timeoutms>=0)
 	{
-		sqlite3_busy_timeout(db->getDatabase(), *timeoutms);
+		sqlite3_busy_timeout(db->getDatabase(), timeoutms);
 	}
 }
 
-void DatabaseQuery::shutdownStepping(int err, int *timeoutms)
+void DatabaseQuery::shutdownStepping(int err, int timeoutms)
 {
-	if(timeoutms!=NULL && *timeoutms>=0)
+	if(timeoutms>=0)
 	{
 		sqlite3_busy_timeout(db->getDatabase(), c_sqlite_busy_timeout_default);
 	}
@@ -193,21 +204,9 @@ void DatabaseQuery::shutdownStepping(int err, int *timeoutms)
 	{
 		sqlite3_reset(ps);
 	}
-
-	if(timeoutms!=NULL)
-	{
-		if(err!=SQLITE_DONE)
-		{
-			*timeoutms=1;
-		}
-		else
-		{
-			*timeoutms=0;
-		}
-	}
 }
 
-db_results DatabaseQuery::Read(int *timeoutms)
+db_results DatabaseQuery::read(int timeoutms)
 {
 	int err;
 	db_results rows;
@@ -263,7 +262,7 @@ namespace
 	}
 }
 
-int DatabaseQuery::step(db_single_result& res, int *timeoutms, int& tries, bool& reset)
+int DatabaseQuery::step(db_single_result& res, int timeoutms, int& tries, bool& reset)
 {
 	int err=sqlite3_step(ps);
 	if( resultOkay(err) )
@@ -272,7 +271,7 @@ int DatabaseQuery::step(db_single_result& res, int *timeoutms, int& tries, bool&
 			|| err==SQLITE_PROTOCOL
 			|| err==SQLITE_IOERR_BLOCKED )
 		{
-			if(timeoutms!=NULL && *timeoutms>=0)
+			if(timeoutms>=0)
 			{
 				return SQLITE_ABORT;
 			}
@@ -317,11 +316,11 @@ int DatabaseQuery::step(db_single_result& res, int *timeoutms, int& tries, bool&
 		else
 		{
 			std::this_thread::sleep_for(1s);
-			if(timeoutms!=NULL && *timeoutms>=0)
+			if(timeoutms>=0)
 			{
-				*timeoutms-=1000;
+				timeoutms-=1000;
 
-				if(*timeoutms<=0)
+				if(timeoutms<=0)
 				{
 					return SQLITE_ABORT;
 				}
@@ -331,19 +330,18 @@ int DatabaseQuery::step(db_single_result& res, int *timeoutms, int& tries, bool&
 	return err;
 }
 
-DatabaseCursor* DatabaseQuery::Cursor(int *timeoutms)
+DatabaseCursor& DatabaseQuery::cursor(int timeoutms)
 {
-	if(cursor==NULL)
+	if(!_cursor)
 	{
-		cursor=new DatabaseCursor(this, timeoutms);
+		_cursor=std::make_unique<DatabaseCursor>(this, timeoutms);
 	}
 	else
 	{
-		if (!cursor->reset())
-			return NULL;
+		_cursor->reset();
 	}
 
-	return cursor;
+	return *_cursor;
 }
 
 std::string DatabaseQuery::getStatement(void)

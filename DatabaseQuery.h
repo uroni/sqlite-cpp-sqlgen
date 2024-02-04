@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "Database.h"
+#include "DatabaseCursor.h"
 
 struct sqlite3_stmt;
 struct sqlite3;
@@ -14,31 +15,40 @@ namespace sqlgen
 
 	class DatabaseQuery
 	{
-	public:
+		friend class Database;
+
 		DatabaseQuery(const std::string& pStmt_str, sqlite3_stmt* prepared_statement, Database* pDB);
+	public:		
 		~DatabaseQuery();
 
-		virtual void Bind(const std::string& str);
-		virtual void Bind(int p);
-		virtual void Bind(unsigned int p);
-		virtual void Bind(double p);
-		virtual void Bind(long long int p);
+		DatabaseQuery(const DatabaseQuery&) = delete;
+		DatabaseQuery(DatabaseQuery&& other) {
+			*this = std::move(other);
+		}
+		DatabaseQuery& operator=(const DatabaseQuery&) = delete;
+		DatabaseQuery& operator=(DatabaseQuery&& other);
+
+		virtual void bind(const std::string& str);
+		virtual void bind(int p);
+		virtual void bind(unsigned int p);
+		virtual void bind(double p);
+		virtual void bind(int64_t p);
 #if defined(_WIN64) || defined(_LP64)
-		virtual void Bind(size_t p);
+		virtual void bind(size_t p);
 #endif
-		virtual void Bind(const char* buffer, unsigned int bsize);
+		virtual void bind(const char* buffer, size_t bsize);
 
-		virtual void Reset(void);
+		virtual void reset();
 
-		virtual bool Write(int timeoutms = -1);
-		db_results Read(int* timeoutms = NULL);
+		virtual bool write(int timeoutms = -1);
+		db_results read(int timeoutms = -1);
 
-		virtual DatabaseCursor* Cursor(int* timeoutms = NULL);
+		virtual DatabaseCursor& cursor(int timeoutms = -1);
 
-		void setupStepping(int* timeoutms);
-		void shutdownStepping(int err, int* timeoutms);
+		void setupStepping(int timeoutms);
+		void shutdownStepping(int err, int timeoutms);
 
-		int step(db_single_result& res, int* timeoutms, int& tries, bool& reset);
+		int step(db_single_result& res, int timeoutms, int& tries, bool& reset);
 
 		bool resultOkay(int rc);
 
@@ -52,8 +62,8 @@ namespace sqlgen
 		sqlite3_stmt* ps;
 		std::string stmt_str;
 		Database* db;
-		int curr_idx;
-		DatabaseCursor* cursor;
+		int curr_idx = 1;
+		std::unique_ptr<DatabaseCursor> _cursor;
 	};
 
 }

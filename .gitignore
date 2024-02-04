@@ -1,0 +1,4 @@
+build/*
+.cache/*
+*.sqlgenbackup
+sample/samplegen.db

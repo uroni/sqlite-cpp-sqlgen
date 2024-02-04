@@ -7,10 +7,11 @@
 #include "DatabaseQuery.h"
 #include "sqlite/sqlite3.h"
 #include "DatabaseLogger.h"
+#include <utility>
 
 using namespace sqlgen;
 
-DatabaseCursor::DatabaseCursor(DatabaseQuery* query, int *timeoutms)
+DatabaseCursor::DatabaseCursor(DatabaseQuery* query, int timeoutms)
 	: query(query), tries(60), timeoutms(timeoutms),
 	lastErr(SQLITE_OK), _has_error(false), is_shutdown(false)
 {
@@ -65,7 +66,7 @@ bool DatabaseCursor::next(db_single_result &res)
 	return false;
 }
 
-bool DatabaseCursor::has_error(void)
+bool DatabaseCursor::hasError(void)
 {
 	return _has_error;
 }
