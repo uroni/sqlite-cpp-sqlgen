@@ -23,9 +23,9 @@ target_include_directories(sqlite-cpp-sqlgen PUBLIC
 add_library(SqliteCppGen Database.cpp
                          DatabaseCursor.cpp
                          DatabaseLogger.cpp
+                         DatabaseQuery.cpp
                          stringtools.cpp
-                         sqlite/sqlite3.c
-                        sample/SampleGen.cpp)
+                         sqlite/sqlite3.c)
 
 target_include_directories (SqliteCppGen PUBLIC "${CMAKE_CURRENT_LIST_DIR}")
 
