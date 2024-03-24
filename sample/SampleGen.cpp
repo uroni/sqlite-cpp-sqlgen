@@ -11,11 +11,11 @@
 */
 std::vector<Users::User> Users::getUsers()
 {
-	if(!q_getUsers.prepared())
+	if(!_getUsers.prepared())
 	{
-		q_getUsers=db.prepare("SELECT id, name, password FROM users");
+		_getUsers=db.prepare("SELECT id, name, password FROM users");
 	}
-	auto& cursor=q_getUsers.cursor();
+	auto& cursor=_getUsers.cursor();
 	std::vector<Users::User> ret;
 	while(cursor.next())
 	{
@@ -37,12 +37,12 @@ std::vector<Users::User> Users::getUsers()
 */
 Users::User Users::getUserById(int64_t id)
 {
-	if(!q_getUserById.prepared())
+	if(!_getUserById.prepared())
 	{
-		q_getUserById=db.prepare("SELECT id, name, password FROM users WHERE id=?");
+		_getUserById=db.prepare("SELECT id, name, password FROM users WHERE id=?");
 	}
-	q_getUserById.bind(id);
-	auto& cursor=q_getUserById.cursor();
+	_getUserById.bind(id);
+	auto& cursor=_getUserById.cursor();
 	User ret = { false, 0, "", "" };
 	if(cursor.next())
 	{
@@ -51,7 +51,7 @@ Users::User Users::getUserById(int64_t id)
 		cursor.get(1, ret.name);
 		cursor.get(2, ret.password);
 	}
-	q_getUserById.reset();
+	_getUserById.reset();
 	return ret;
 }
 
@@ -64,12 +64,12 @@ Users::User Users::getUserById(int64_t id)
 */
 Users::User Users::getUserByName(const std::string& name)
 {
-	if(!q_getUserByName.prepared())
+	if(!_getUserByName.prepared())
 	{
-		q_getUserByName=db.prepare("SELECT id, name, password FROM users WHERE name=?");
+		_getUserByName=db.prepare("SELECT id, name, password FROM users WHERE name=?");
 	}
-	q_getUserByName.bind(name);
-	auto& cursor=q_getUserByName.cursor();
+	_getUserByName.bind(name);
+	auto& cursor=_getUserByName.cursor();
 	User ret = { false, 0, "", "" };
 	if(cursor.next())
 	{
@@ -78,7 +78,7 @@ Users::User Users::getUserByName(const std::string& name)
 		cursor.get(1, ret.name);
 		cursor.get(2, ret.password);
 	}
-	q_getUserByName.reset();
+	_getUserByName.reset();
 	return ret;
 }
 
@@ -91,17 +91,17 @@ Users::User Users::getUserByName(const std::string& name)
 */
 int64_t Users::addUser(const std::string& name, const std::string& password)
 {
-	if(!q_addUser.prepared())
+	if(!_addUser.prepared())
 	{
-		q_addUser=db.prepare("INSERT INTO users (name, password) VALUES (?, ?) RETURNING id");
+		_addUser=db.prepare("INSERT INTO users (name, password) VALUES (?, ?) RETURNING id");
 	}
-	q_addUser.bind(name);
-	q_addUser.bind(password);
-	auto& cursor=q_addUser.cursor();
+	_addUser.bind(name);
+	_addUser.bind(password);
+	auto& cursor=_addUser.cursor();
 	assert(cursor.next());
 	int64_t ret;
 	cursor.get(0, ret);
-	q_addUser.reset();
+	_addUser.reset();
 	return ret;
 }
 
@@ -113,13 +113,13 @@ int64_t Users::addUser(const std::string& name, const std::string& password)
 */
 void Users::deleteUser(int64_t id)
 {
-	if(!q_deleteUser.prepared())
+	if(!_deleteUser.prepared())
 	{
-		q_deleteUser=db.prepare("DELETE FROM users WHERE id=?");
+		_deleteUser=db.prepare("DELETE FROM users WHERE id=?");
 	}
-	q_deleteUser.bind(id);
-	q_deleteUser.write();
-	q_deleteUser.reset();
+	_deleteUser.bind(id);
+	_deleteUser.write();
+	_deleteUser.reset();
 }
 
 

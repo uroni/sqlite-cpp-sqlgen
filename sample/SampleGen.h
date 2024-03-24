@@ -29,10 +29,10 @@ public:
 
 private:
     //@-SQLGenVariablesBegin
-	sqlgen::DatabaseQuery q_getUsers;
-	sqlgen::DatabaseQuery q_getUserById;
-	sqlgen::DatabaseQuery q_getUserByName;
-	sqlgen::DatabaseQuery q_addUser;
-	sqlgen::DatabaseQuery q_deleteUser;
+	sqlgen::DatabaseQuery _getUsers;
+	sqlgen::DatabaseQuery _getUserById;
+	sqlgen::DatabaseQuery _getUserByName;
+	sqlgen::DatabaseQuery _addUser;
+	sqlgen::DatabaseQuery _deleteUser;
 	//@-SQLGenVariablesEnd
 };

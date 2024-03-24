@@ -602,7 +602,16 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, const GenCo
 		func_s_name=query_name;
 	}
 
-	query_name="q_"+query_name;
+	if(query_name.empty())
+	{
+		std::cout << "Empty query name" << std::endl;
+		return AnnotatedCode(input.annotations, ""); 
+	}
+
+	query_name="_"+query_name;
+
+	query_name[1] = strlower(query_name.substr(1,1))[0];
+
 
 	bool return_optional = false;
 
