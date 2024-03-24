@@ -18,7 +18,7 @@ using namespace std::chrono_literals;
 using namespace sqlgen;
 
 DatabaseQuery::DatabaseQuery(const std::string &pStmt_str, sqlite3_stmt *prepared_statement, Database *pDB)
-	: stmt_str(pStmt_str), cursor(NULL)
+	: stmt_str(pStmt_str)
 {
 	ps=prepared_statement;
 	curr_idx=1;
@@ -30,8 +30,6 @@ DatabaseQuery::~DatabaseQuery()
 	int err=sqlite3_finalize(ps);
 	if( err!=SQLITE_OK && err!=SQLITE_BUSY && err!=SQLITE_IOERR_BLOCKED )
 		getDatabaseLogger()->Log("SQL: "+(std::string)sqlite3_errmsg(db->getDatabase())+ " Stmt: ["+stmt_str+"]", LL_ERROR);
-
-	delete cursor;
 }
 
 
@@ -213,17 +211,13 @@ db_results DatabaseQuery::Read(int *timeoutms)
 	db_results rows;
 	int tries=60; //10min
 
-#ifdef LOG_READ_QUERIES
-	ScopedAddActiveDatabaseQuery active_query(this);
-#endif
-
 	setupStepping(timeoutms);
 
 	db_single_result res;
 	do
 	{
 		bool reset=false;
-		err=step(res, timeoutms, tries, reset);
+		err=step(&res, timeoutms, tries, reset);
 		if(reset)
 		{
 			rows.clear();
@@ -249,21 +243,18 @@ bool DatabaseQuery::resultOkay(int rc)
 			rc==SQLITE_IOERR_BLOCKED;
 }
 
-namespace
+std::string sqlgen::DatabaseQuery::ustring_sqlite3_column_name(int N)
 {
-	std::string ustring_sqlite3_column_name(sqlite3_stmt* ps, int N)
+	const char* c_name = sqlite3_column_name(ps, N);
+	if (c_name == NULL)
 	{
-		const char* c_name = sqlite3_column_name(ps, N);
-		if(c_name==NULL)
-		{
-			return std::string();
-		}
-
-		return std::string(c_name);
+		return std::string();
 	}
+
+	return std::string(c_name);
 }
 
-int DatabaseQuery::step(db_single_result& res, int *timeoutms, int& tries, bool& reset)
+int DatabaseQuery::step(db_single_result* res, int *timeoutms, int& tries, bool& reset)
 {
 	int err=sqlite3_step(ps);
 	if( resultOkay(err) )
@@ -293,25 +284,28 @@ int DatabaseQuery::step(db_single_result& res, int *timeoutms, int& tries, bool&
 		}
 		else if( err==SQLITE_ROW )
 		{
-			int column=0;
-			std::string column_name;
-			while( !(column_name=ustring_sqlite3_column_name(ps, column) ).empty() )
+			if (res != nullptr)
 			{
-				const void* data;
-				int data_size;
-				if(sqlite3_column_type(ps, column)==SQLITE_BLOB)
+				int column = 0;
+				std::string column_name;
+				while (!(column_name = ustring_sqlite3_column_name(column)).empty())
 				{
-					data = sqlite3_column_blob(ps, column);
-					data_size =sqlite3_column_bytes(ps, column);
+					const void* data;
+					int data_size;
+					if (sqlite3_column_type(ps, column) == SQLITE_BLOB)
+					{
+						data = sqlite3_column_blob(ps, column);
+						data_size = sqlite3_column_bytes(ps, column);
+					}
+					else
+					{
+						data = sqlite3_column_text(ps, column);
+						data_size = sqlite3_column_bytes(ps, column);
+					}
+					std::string datastr(reinterpret_cast<const char*>(data), reinterpret_cast<const char*>(data) + data_size);
+					res->insert(std::pair<std::string, std::string>(column_name, datastr));
+					++column;
 				}
-				else
-				{
-					data = sqlite3_column_text(ps, column);
-					data_size = sqlite3_column_bytes(ps, column);
-				}
-				std::string datastr(reinterpret_cast<const char*>(data), reinterpret_cast<const char*>(data)+data_size);				
-				res.insert( std::pair<std::string, std::string>(column_name, datastr) );
-				++column;
 			}
 		}
 		else
@@ -333,17 +327,17 @@ int DatabaseQuery::step(db_single_result& res, int *timeoutms, int& tries, bool&
 
 DatabaseCursor* DatabaseQuery::Cursor(int *timeoutms)
 {
-	if(cursor==NULL)
+	if(!cursor)
 	{
-		cursor=new DatabaseCursor(this, timeoutms);
+		cursor= std::make_unique<DatabaseCursor>(this, timeoutms);
 	}
 	else
 	{
 		if (!cursor->reset())
-			return NULL;
+			return nullptr;
 	}
 
-	return cursor;
+	return cursor.get();
 }
 
 std::string DatabaseQuery::getStatement(void)

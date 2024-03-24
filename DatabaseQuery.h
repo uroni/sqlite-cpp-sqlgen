@@ -35,25 +35,32 @@ namespace sqlgen
 
 		virtual DatabaseCursor* Cursor(int* timeoutms = NULL);
 
-		void setupStepping(int* timeoutms);
-		void shutdownStepping(int err, int* timeoutms);
-
-		int step(db_single_result& res, int* timeoutms, int& tries, bool& reset);
-
-		bool resultOkay(int rc);
-
 		std::string getStatement(void);
 
 		std::string getErrMsg(void);
 
 	private:
 		bool Execute(int timeoutms);
+		int step(db_single_result* res, int* timeoutms, int& tries, bool& reset);
+
+		void setupStepping(int* timeoutms);
+		void shutdownStepping(int err, int* timeoutms);
+
+		bool resultOkay(int rc);
+
+		sqlite3_stmt* getSQliteStmt() {
+			return ps;
+		}
+
+		std::string ustring_sqlite3_column_name(int N);
 
 		sqlite3_stmt* ps;
 		std::string stmt_str;
 		Database* db;
 		int curr_idx;
-		DatabaseCursor* cursor;
+		std::unique_ptr<DatabaseCursor> cursor;
+
+		friend class DatabaseCursor;
 	};
 
 }
