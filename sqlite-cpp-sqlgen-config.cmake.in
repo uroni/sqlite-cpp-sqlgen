@@ -2,8 +2,8 @@
 @PACKAGE_INIT@
 
 # Provide the directories where installed components can be found
-set(sqlite-cpp-sqlgen_INCLUDE_DIR "@CMAKE_INSTALL_FULL_INCLUDEDIR@/sqlite-cpp-sqlgen")
-set(sqlite-cpp-sqlgen_LIB_DIR "@CMAKE_INSTALL_FULL_LIBDIR@")
+set(sqlite-cpp-sqlgen_INCLUDE_DIR "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@/sqlite-cpp-sqlgen")
+set(sqlite-cpp-sqlgen_LIB_DIR "@PACKAGE_CMAKE_INSTALL_LIBDIR@")
 
 # Define the imported target for the library
 include(CMakeFindDependencyMacro)
