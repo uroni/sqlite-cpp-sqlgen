@@ -759,11 +759,24 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, const GenCo
 
 	std::map<std::string, size_t> return_cols;
 
-	if (stmt_type == StatementType_Select)
+	if (stmt_type == StatementType_Select ||
+		stmt_type == StatementType_Delete ||
+		stmt_type == StatementType_Insert ||
+		stmt_type == StatementType_Update)
 	{
-		size_t select_pos = strlower(parsedSql).find("select");
-		size_t from_pos = strlower(parsedSql).find(" from ");
-		std::string select_vars = trim(parsedSql.substr(select_pos + 6, from_pos - select_pos - 6));
+		std::string select_vars;
+		if(stmt_type == StatementType_Select)
+		{
+			size_t select_pos = strlower(parsedSql).find("select");
+			size_t from_pos = strlower(parsedSql).find(" from ");
+			select_vars = trim(parsedSql.substr(select_pos + 6, from_pos - select_pos - 6));
+		}
+		else
+		{
+			size_t returning_pos = strlower(parsedSql).find(" returning ");
+			if(returning_pos!=std::string::npos)
+				select_vars = trim(parsedSql.substr(returning_pos+11));
+		}
 		if (!select_vars.empty() && select_vars != "*")
 		{
 			std::vector<std::string> return_exp_vars = tokenizeIgnoreParentheses(select_vars, ',');

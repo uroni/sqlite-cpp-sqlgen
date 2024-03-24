@@ -100,7 +100,7 @@ int64_t Users::addUser(const std::string& name, const std::string& password)
 	auto& cursor=q_addUser.cursor();
 	assert(cursor.next());
 	int64_t ret;
-	cursor.get("id", ret);
+	cursor.get(0, ret);
 	q_addUser.reset();
 	return ret;
 }
