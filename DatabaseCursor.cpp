@@ -10,15 +10,11 @@
 
 using namespace sqlgen;
 
-DatabaseCursor::DatabaseCursor(DatabaseQuery* query, int *timeoutms)
+DatabaseCursor::DatabaseCursor(DatabaseQuery* query, int* timeoutms)
 	: query(query), tries(60), timeoutms(timeoutms),
 	lastErr(SQLITE_OK), _has_error(false), is_shutdown(false)
 {
 	query->setupStepping(timeoutms);
-
-#ifdef LOG_READ_QUERIES
-	active_query=new ScopedAddActiveQuery(query);
-#endif
 }
 
 DatabaseCursor::~DatabaseCursor(void)
@@ -34,32 +30,29 @@ bool DatabaseCursor::reset()
 	is_shutdown = false;
 
 	query->setupStepping(timeoutms);
-
-#ifdef LOG_READ_QUERIES
-	active_query = new ScopedAddActiveQuery(query);
-#endif
 	return true;
 }
 
-bool DatabaseCursor::next(db_single_result &res)
+bool DatabaseCursor::next(db_single_result* res)
 {
-	res.clear();
+	if (res != nullptr)
+		res->clear();
+
 	do
 	{
-		bool reset=false;
-		lastErr=query->step(res, timeoutms, tries, reset);
+		bool reset = false;
+		lastErr = query->step(res, timeoutms, tries, reset);
 		//TODO handle reset (should not happen in WAL mode)
-		if(lastErr==SQLITE_ROW)
+		if (lastErr == SQLITE_ROW)
 		{
 			return true;
 		}
-	}
-	while(query->resultOkay(lastErr));
+	} while (query->resultOkay(lastErr));
 
-	if(lastErr!=SQLITE_DONE)
+	if (lastErr != SQLITE_DONE)
 	{
-		getDatabaseLogger()->Log("SQL Error: "+query->getErrMsg()+ " Stmt: ["+query->getStatement()+"]", LL_ERROR);
-		_has_error=true;
+		getDatabaseLogger()->Log("SQL Error: " + query->getErrMsg() + " Stmt: [" + query->getStatement() + "]", LL_ERROR);
+		_has_error = true;
 	}
 
 	return false;
@@ -76,9 +69,112 @@ void DatabaseCursor::shutdown()
 	{
 		is_shutdown = true;
 		query->shutdownStepping(lastErr, timeoutms);
-
-#ifdef LOG_READ_QUERIES
-		delete active_query;
-#endif
 	}
+}
+
+bool DatabaseCursor::get(int col, std::string& v)
+{
+	sqlite3_stmt* ps = query->getSQliteStmt();
+	int col_type = sqlite3_column_type(ps, col);
+	const void* data;
+	int data_size;
+	if (col_type == SQLITE_BLOB)
+	{
+		data = sqlite3_column_blob(ps, col);
+		data_size = sqlite3_column_bytes(ps, col);
+	}
+	else
+	{
+		data = sqlite3_column_text(ps, col);
+		data_size = sqlite3_column_bytes(ps, col);
+	}
+	if (data == 0)
+	{
+		v.clear();
+		return false;
+	}
+	v.assign(reinterpret_cast<const char*>(data), reinterpret_cast<const char*>(data) + data_size);
+	return col_type == SQLITE_BLOB || col_type == SQLITE_TEXT;
+}
+
+bool DatabaseCursor::get(int col, int& v)
+{
+	sqlite3_stmt* ps = query->getSQliteStmt();
+	int col_type = sqlite3_column_type(ps, col);
+	v = sqlite3_column_int(ps, col);
+	return col_type == SQLITE_INTEGER;
+}
+
+bool DatabaseCursor::get(int col, long long int& v)
+{
+	sqlite3_stmt* ps = query->getSQliteStmt();
+	int col_type = sqlite3_column_type(ps, col);
+	v = sqlite3_column_int64(ps, col);
+	return col_type == SQLITE_INTEGER;
+}
+
+bool DatabaseCursor::get(int col, double& v)
+{
+	sqlite3_stmt* ps = query->getSQliteStmt();
+	int col_type = sqlite3_column_type(ps, col);
+	v = sqlite3_column_double(ps, col);
+	return col_type == SQLITE_FLOAT;
+}
+
+void DatabaseCursor::init_col_names()
+{
+	int column = 0;
+	std::string column_name;
+	while (!(column_name = query->ustring_sqlite3_column_name(column)).empty())
+	{
+		col_names[column_name] = column;
+	}
+}
+
+int DatabaseCursor::get_col_idx(const std::string& col)
+{
+	if (col_names.empty())
+		init_col_names();
+
+	auto col_it = col_names.find(col);
+	if (col_it == col_names.end())
+		return -1;
+
+	return col_it->second;
+}
+
+bool DatabaseCursor::get(const std::string& col, std::string& v)
+{
+	int col_idx = get_col_idx(col);
+	if (col_idx < 0)
+		return false;
+
+	return get(col, v);
+}
+
+bool DatabaseCursor::get(const std::string& col, int& v)
+{
+	int col_idx = get_col_idx(col);
+	if (col_idx < 0)
+		return false;
+
+	return get(col, v);
+}
+
+bool DatabaseCursor::get(const std::string& col, long long int& v)
+{
+	int col_idx = get_col_idx(col);
+	if (col_idx < 0)
+		return false;
+
+	return get(col, v);
+}
+
+bool DatabaseCursor::get(const std::string& col, double& v)
+{
+	int col_idx = get_col_idx(col);
+	if (col_idx < 0)
+		return false;
+
+	return get(col, v);
 }
