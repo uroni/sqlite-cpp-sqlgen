@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0.
  */
 
-#include "Query.h"
+#include <utility>
 #include "sqlite/sqlite3.h"
 #include <stdlib.h>
 #include "Database.h"
@@ -41,49 +41,62 @@ namespace
 
 Database::~Database()
 {
-	destroyAllQueries();
-	for(std::map<int, DatabaseQuery*>::iterator iter=prepared_queries.begin();iter!=prepared_queries.end();++iter)
-	{
-		DatabaseQuery *q=(DatabaseQuery*)iter->second;
-		delete q;
-	}
-	prepared_queries.clear();
-
 	sqlite3_close(db);
 }
 
-bool Database::Open(std::string pFile, const std::vector<std::pair<std::string,std::string> > &attach,
-	size_t allocation_chunk_size, const str_map& p_params)
+Database::Database(Database&& other)
 {
-	params = p_params;
+	*this = std::move(other);
+}
 
-	attached_dbs=attach;
-	in_transaction=false;
+Database& Database::operator=(Database &&other)
+{
+	db = std::exchange(other.db, nullptr),
+	in_transaction = other.in_transaction,
+	attached_dbs = std::move(other.attached_dbs);
+	params = std::move(other.params);
+	return *this;
+}
+
+bool initLogging()
+{
+	sqlite3_config(SQLITE_CONFIG_LOG, errorLogCallback, NULL);
+	return true;
+}
+
+Database::Database(const std::string& pFile, std::vector<std::pair<std::string,std::string> > attach,
+	size_t allocation_chunk_size, str_map p_params)
+	: params(std::move(p_params)), attached_dbs(std::move(attach))
+{
+	static auto initRes = initLogging();
+	if(!initRes)
+	{
+		throw DatabaseOpenError("Static init failed");
+	}
+
 	if( sqlite3_open(pFile.c_str(), &db) )
 	{
 		getDatabaseLogger()->Log("Could not open db ["+pFile+"]");
-		sqlite3_close(db);
-		db = NULL;
-		return false;
+		throw DatabaseOpenError("Could not open db ["+pFile+"]");
 	}
 	else
 	{
 		str_map::const_iterator it = params.find("synchronous");
 		if (it != params.end())
 		{
-			Write("PRAGMA synchronous="+it->second);
+			write("PRAGMA synchronous="+it->second);
 		}
 		else
 		{
-			Write("PRAGMA synchronous=NORMAL");
+			write("PRAGMA synchronous=NORMAL");
 		}
-		Write("PRAGMA foreign_keys = ON");
-		Write("PRAGMA threads = 2");
+		write("PRAGMA foreign_keys = ON");
+		write("PRAGMA threads = 2");
 
 		it = params.find("wal_autocheckpoint");
 		if (it != params.end())
 		{
-			Write("PRAGMA wal_autocheckpoint=" + it->second);
+			write("PRAGMA wal_autocheckpoint=" + it->second);
 
 			if (atoi(it->second.c_str())<=0)
 			{
@@ -99,17 +112,17 @@ bool Database::Open(std::string pFile, const std::vector<std::pair<std::string,s
 		it = params.find("page_size");
 		if (it != params.end())
 		{
-			Write("PRAGMA page_size=" + it->second);
+			write("PRAGMA page_size=" + it->second);
 		}
 		else
 		{
-			Write("PRAGMA page_size=4096");
+			write("PRAGMA page_size=4096");
 		}
 
 		it = params.find("mmap_size");
 		if (it != params.end())
 		{
-			Write("PRAGMA mmap_size=" + it->second);
+			write("PRAGMA mmap_size=" + it->second);
 		}
 
 		if(allocation_chunk_size!=std::string::npos)
@@ -119,96 +132,50 @@ bool Database::Open(std::string pFile, const std::vector<std::pair<std::string,s
 		}
 
 		static size_t sqlite_cache_size = get_sqlite_cache_size();
-		Write("PRAGMA cache_size = -"+std::to_string(sqlite_cache_size));	
+		write("PRAGMA cache_size = -"+std::to_string(sqlite_cache_size));	
 
 		sqlite3_busy_timeout(db, c_sqlite_busy_timeout_default);
 
-		AttachDBs();
-
-		return true;
-	}
-}
-
-void Database::initMutex(void)
-{
-	sqlite3_config(SQLITE_CONFIG_LOG, errorLogCallback, NULL);
-}
-
-void Database::destroyMutex(void)
-{
-}
-
-db_results Database::Read(std::string pQuery)
-{
-	DatabaseQuery*q=Prepare(pQuery, false);
-	if(q!=NULL)
-	{
-		db_results ret=q->Read();
-		delete ((DatabaseQuery*)q);
-		return ret;
-	}
-	return db_results();
-}
-
-bool Database::Write(std::string pQuery)
-{
-	DatabaseQuery*q=Prepare(pQuery, false);
-	if(q!=NULL)
-	{
-		bool b=q->Write();
-		delete ((DatabaseQuery*)q);
-		return b;
-	}
-	else
-	{
-		return false;
+		attachDBs();
 	}
 }
 
 
-bool Database::BeginReadTransaction()
+db_results Database::read(const std::string& query)
 {
+	return prepare(query).read();
+}
+
+void Database::write(const std::string& query)
+{
+	prepare(query).write();
+}
+
+
+void Database::beginReadTransaction()
+{
+	write("BEGIN");
 	in_transaction = true;
-	if(Write("BEGIN"))
-	{
-		return true;
-	}
-	else
-	{
-		in_transaction = false;
-		return false;
-	}
 }
 
-bool Database::BeginWriteTransaction()
+void Database::beginWriteTransaction()
 {
+	write("BEGIN IMMEDIATE");
 	in_transaction = true;
-	if(Write("BEGIN IMMEDIATE;"))
-	{
-		return true;
-	}
-	else
-	{
-		in_transaction = false;
-		return false;
-	}
 }
 
-bool Database::EndTransaction(void)
+void Database::endTransaction()
 {
-	bool ret = Write("END;");
+	write("END;");
 	in_transaction=false;
-	return ret;
 }
 
-bool Database::RollbackTransaction()
+void Database::rollbackTransaction()
 {
-	bool ret = Write("ROLLBACK;");
-	in_transaction = false;
-	return ret;
+	write("ROLLBACK");
 }
 
-DatabaseQuery* Database::Prepare(std::string pQuery, bool autodestroy)
+DatabaseQuery Database::prepare(std::string pQuery)
 {
 	int prepare_tries = 0;
 #ifdef SQLITE_PREPARE_RETRIES
@@ -249,63 +216,12 @@ DatabaseQuery* Database::Prepare(std::string pQuery, bool autodestroy)
 
 	if( err!=SQLITE_OK )
 	{
-		getDatabaseLogger()->Log("Error preparing Query ["+pQuery+"]: "+sqlite3_errmsg(db),LL_ERROR);
-		return NULL;
-	}
-	DatabaseQuery* q=new DatabaseQuery(pQuery, prepared_statement, this);
-	if( autodestroy )
-	{
-		queries.push_back(q);
+		const auto msg = "Error preparing Query ["+pQuery+"]: "+sqlite3_errmsg(db);
+		getDatabaseLogger()->Log(msg,LL_ERROR);
+		throw PrepareError(msg);
 	}
 
-	return q;
-}
-
-DatabaseQuery* Database::Prepare(int id, std::string pQuery)
-{
-	std::map<int, DatabaseQuery*>::iterator iter=prepared_queries.find(id);
-	if( iter!=prepared_queries.end() )
-	{
-		iter->second->Reset();
-		return iter->second;
-	}
-	else
-	{
-		DatabaseQuery *q=Prepare(pQuery, false);
-		prepared_queries.insert(std::pair<int, DatabaseQuery*>(id, q) );
-		return q;
-	}
-}
-
-void Database::destroyQuery(DatabaseQuery *q)
-{
-	if(q==NULL)
-	{
-		return;
-	}
-
-	for(size_t i=0;i<queries.size();++i)
-	{
-		if( queries[i]==q )
-		{
-			DatabaseQuery *cq=(DatabaseQuery*)q;
-			delete cq;
-			queries.erase( queries.begin()+i);
-			return;
-		}
-	}
-	DatabaseQuery*cq=(DatabaseQuery*)q;
-	delete cq;
-}
-
-void Database::destroyAllQueries(void)
-{
-	for(size_t i=0;i<queries.size();++i)
-	{
-		DatabaseQuery* cq=(DatabaseQuery*)queries[i];
-		delete cq;
-	}
-	queries.clear();
+	return DatabaseQuery(pQuery, prepared_statement, this);
 }
 
 long long int Database::getLastInsertID(void)
@@ -328,29 +244,29 @@ std::string Database::getEngineName(void)
 	return "sqlite";
 }
 
-void Database::AttachDBs(void)
+void Database::attachDBs(void)
 {
 	for(size_t i=0;i<attached_dbs.size();++i)
 	{
-		Write("ATTACH DATABASE '"+attached_dbs[i].first+"' AS "+attached_dbs[i].second);
+		write("ATTACH DATABASE '"+attached_dbs[i].first+"' AS "+attached_dbs[i].second);
 
 		str_map::const_iterator it = params.find("synchronous");
 		if (it != params.end())
 		{
-			Write("PRAGMA "+ attached_dbs[i].second+".synchronous=" + it->second);
+			write("PRAGMA "+ attached_dbs[i].second+".synchronous=" + it->second);
 		}
 		else
 		{
-			Write("PRAGMA "+ attached_dbs[i].second+".synchronous=NORMAL");
+			write("PRAGMA "+ attached_dbs[i].second+".synchronous=NORMAL");
 		}
 	}
 }
 
-void Database::DetachDBs(void)
+void Database::detachDBs(void)
 {
 	for(size_t i=0;i<attached_dbs.size();++i)
 	{
-		Write("DETACH DATABASE "+attached_dbs[i].second);
+		write("DETACH DATABASE "+attached_dbs[i].second);
 	}
 }
 

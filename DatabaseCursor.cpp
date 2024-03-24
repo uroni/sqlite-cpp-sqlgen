@@ -7,10 +7,11 @@
 #include "DatabaseQuery.h"
 #include "sqlite/sqlite3.h"
 #include "DatabaseLogger.h"
+#include <utility>
 
 using namespace sqlgen;
 
-DatabaseCursor::DatabaseCursor(DatabaseQuery* query, int* timeoutms)
+DatabaseCursor::DatabaseCursor(DatabaseQuery* query, int timeoutms)
 	: query(query), tries(60), timeoutms(timeoutms),
 	lastErr(SQLITE_OK), _has_error(false), is_shutdown(false)
 {
@@ -19,7 +20,6 @@ DatabaseCursor::DatabaseCursor(DatabaseQuery* query, int* timeoutms)
 
 DatabaseCursor::~DatabaseCursor(void)
 {
-	shutdown();
 }
 
 bool DatabaseCursor::reset()
@@ -58,7 +58,7 @@ bool DatabaseCursor::next(db_single_result* res)
 	return false;
 }
 
-bool DatabaseCursor::has_error(void)
+bool DatabaseCursor::hasError(void)
 {
 	return _has_error;
 }
@@ -105,7 +105,7 @@ bool DatabaseCursor::get(int col, int& v)
 	return col_type == SQLITE_INTEGER;
 }
 
-bool DatabaseCursor::get(int col, long long int& v)
+bool DatabaseCursor::get(int col, int64_t& v)
 {
 	sqlite3_stmt* ps = query->getSQliteStmt();
 	int col_type = sqlite3_column_type(ps, col);
@@ -128,6 +128,7 @@ void DatabaseCursor::init_col_names()
 	while (!(column_name = query->ustring_sqlite3_column_name(column)).empty())
 	{
 		col_names[column_name] = column;
+		++column;
 	}
 }
 
@@ -149,7 +150,7 @@ bool DatabaseCursor::get(const std::string& col, std::string& v)
 	if (col_idx < 0)
 		return false;
 
-	return get(col, v);
+	return get(col_idx, v);
 }
 
 bool DatabaseCursor::get(const std::string& col, int& v)
@@ -158,16 +159,16 @@ bool DatabaseCursor::get(const std::string& col, int& v)
 	if (col_idx < 0)
 		return false;
 
-	return get(col, v);
+	return get(col_idx, v);
 }
 
-bool DatabaseCursor::get(const std::string& col, long long int& v)
+bool DatabaseCursor::get(const std::string& col, int64_t& v)
 {
 	int col_idx = get_col_idx(col);
 	if (col_idx < 0)
 		return false;
 
-	return get(col, v);
+	return get(col_idx, v);
 }
 
 bool DatabaseCursor::get(const std::string& col, double& v)
@@ -176,5 +177,5 @@ bool DatabaseCursor::get(const std::string& col, double& v)
 	if (col_idx < 0)
 		return false;
 
-	return get(col, v);
+	return get(col_idx, v);
 }

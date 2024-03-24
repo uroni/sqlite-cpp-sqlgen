@@ -10,6 +10,7 @@
 #include "sqlgen.h"
 #include "stringtools.h"
 #include "sqlgen_config.h"
+#include "test.h"
 
 using namespace sqlgen;
 
@@ -17,6 +18,11 @@ int main(int argc, char* argv[])
 {
 	if(argc<3)
 	{
+		if(argc==2 && std::string(argv[1]) == "test")
+		{
+			return test();
+		}
+
 		std::cout << "SQLite SQLGen version " << SQLGEN_VERSION_MAJOR << "." << SQLGEN_VERSION_MINOR << std::endl;
 		std::cout << "Usage: SQLGen [SQLite database filename] [cpp-file] ([Attached db name] [Attached db filename] ...)" << std::endl;
 		return 1;
@@ -32,22 +38,18 @@ int main(int argc, char* argv[])
 		attach_dbs.push_back(std::make_pair(argv[i + 1], argv[i]));
 	}
 
-	Database sqldb;
-	str_map db_params;
-	if (!sqldb.Open(sqlite_db_str, attach_dbs, std::string::npos, db_params))
-	{
-		std::cout << "Could not open sqlite db \"" << sqlite_db_str << "\"" << std::endl;
-		return 2;
-	}
-
-	std::string cppfile_data=getFile(cppfile);
-	std::string headerfile_data=getFile(headerfile);
-
-	writestring(cppfile_data, cppfile+".sqlgenbackup");
-	writestring(headerfile_data, headerfile+".sqlgenbackup");
-
+	std::string cppfile_data;
+	std::string headerfile_data;
 	try
 	{
+		str_map db_params;
+		auto sqldb = Database(sqlite_db_str, attach_dbs, std::string::npos, db_params);	
+		cppfile_data=getFile(cppfile);
+		headerfile_data=getFile(headerfile);
+
+		writestring(cppfile_data, cppfile+".sqlgenbackup");
+		writestring(headerfile_data, headerfile+".sqlgenbackup");
+
 		sqlgen::sqlgen_main(sqldb, cppfile_data, headerfile_data);
 	}
 	catch (std::exception& e)
