@@ -60,11 +60,11 @@ write_basic_package_version_file(
 configure_package_config_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/sqlite-cpp-sqlgen-config.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/sqlite-cpp-sqlgen-config.cmake"
-    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/sqlite-cpp-sqlgen
+    INSTALL_DESTINATION ${CMAKE_INSTALL_DATADIR}/sqlite-cpp-sqlgen/cmake
 )
 
 install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/sqlite-cpp-sqlgen-config.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/sqlite-cpp-sqlgen-config-version.cmake"
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/sqlite-cpp-sqlgen
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/sqlite-cpp-sqlgen/cmake
 )
