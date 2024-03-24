@@ -27,5 +27,6 @@ namespace sqlgen
 	void Tokenize(const std::string& str, std::vector<std::string>& tokens, std::string seps);
 	std::string strlower(const std::string& str);
 	std::string greplace(std::string tor, std::string tin, std::string data);
+	bool next(const std::string& pData, const size_t& doff, const std::string& pStr);
 }
 

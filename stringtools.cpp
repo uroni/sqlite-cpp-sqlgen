@@ -27,7 +27,6 @@ typedef float f32;
 
 namespace sqlgen
 {
-
 	string getafterinc(const std::string& str, const std::string& data)
 	{
 		size_t pos = data.find(str);
