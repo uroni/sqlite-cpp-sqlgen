@@ -61,6 +61,7 @@ configure_package_config_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/sqlite-cpp-sqlgen-config.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/sqlite-cpp-sqlgen-config.cmake"
     INSTALL_DESTINATION ${CMAKE_INSTALL_DATADIR}/sqlite-cpp-sqlgen/cmake
+    PATH_VARS CMAKE_INSTALL_INCLUDEDIR CMAKE_INSTALL_LIBDIR
 )
 
 install(FILES
