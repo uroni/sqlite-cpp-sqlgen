@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.10)
 
 project(sqlite-cpp-sqlgen VERSION 0.2)
 
+include(GNUInstallDirs)
+
 configure_file(sqlgen_config.h.in sqlgen_config.h)
 
 add_executable(sqlite-cpp-sqlgen
@@ -33,19 +35,15 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 install(TARGETS sqlite-cpp-sqlgen
-        RUNTIME DESTINATION bin)
-
-install(FILES "${PROJECT_BINARY_DIR}/sqlgen_config.h"
-        DESTINATION include)
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 install(TARGETS SqliteCppGen
-        ARCHIVE DESTINATION lib
-        LIBRARY DESTINATION lib
-        RUNTIME DESTINATION bin)
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
+install(FILES "${PROJECT_BINARY_DIR}/sqlgen_config.h"
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/sqlite-cpp-sqlgen)
 
-install(FILES Database.h DatabaseCursor.h DatabaseLogger.h DatabaseQuery.h
-        DESTINATION include)
-
-install(FILES sqlite/sqlite3.h
-        DESTINATION include/sqlite)
+install(FILES Database.h DatabaseCursor.h DatabaseLogger.h DatabaseQuery.h sqlite/sqlite3.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/sqlite-cpp-sqlgen)
