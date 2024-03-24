@@ -49,3 +49,22 @@ install(FILES Database.h DatabaseCursor.h DatabaseLogger.h DatabaseQuery.h sqlit
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/sqlite-cpp-sqlgen)
 
 install(FILES "${CMAKE_SOURCE_DIR}/LICENSE" DESTINATION ${CMAKE_INSTALL_DATADIR}/sqlite-cpp-sqlgen/copyright)
+
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/sqlite-cpp-sqlgen-config-version.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY AnyNewerVersion
+)
+
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/sqlite-cpp-sqlgen-config.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/sqlite-cpp-sqlgen-config.cmake"
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/sqlite-cpp-sqlgen
+)
+
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/sqlite-cpp-sqlgen-config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/sqlite-cpp-sqlgen-config-version.cmake"
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/sqlite-cpp-sqlgen
+)

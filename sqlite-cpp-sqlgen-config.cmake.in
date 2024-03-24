@@ -1,0 +1,31 @@
+# Ensure CMake can properly execute the following commands
+@PACKAGE_INIT@
+
+# Provide the directories where installed components can be found
+set(sqlite-cpp-sqlgen_INCLUDE_DIR "@CMAKE_INSTALL_INCLUDEDIR@/sqlite-cpp-sqlgen")
+set(sqlite-cpp-sqlgen_LIB_DIR "@CMAKE_INSTALL_LIBDIR@")
+
+# Define the imported target for the library
+include(CMakeFindDependencyMacro)
+
+# Create imported target. Adjust the name and path as necessary.
+add_library(SqliteCppGen::SqliteCppGen STATIC IMPORTED)
+
+set_target_properties(SqliteCppGen::SqliteCppGen PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${sqlite-cpp-sqlgen_INCLUDE_DIR}"
+    IMPORTED_LOCATION "${sqlite-cpp-sqlgen_LIB_DIR}/libSqliteCppGen.a"
+)
+
+# Optionally, you can handle version compatibility
+# This is a basic check; more complex version handling may be required for your project
+set(PACKAGE_VERSION "@PROJECT_VERSION@")
+
+# Check if the requested version is compatible with the current version
+if("${PACKAGE_FIND_VERSION}" VERSION_GREATER "${PACKAGE_VERSION}")
+    set(PACKAGE_VERSION_COMPATIBLE FALSE)
+else()
+    set(PACKAGE_VERSION_COMPATIBLE TRUE)
+    if("${PACKAGE_FIND_VERSION_EXACT}")
+        set(PACKAGE_VERSION_EXACT TRUE)
+    endif()
+endif()
