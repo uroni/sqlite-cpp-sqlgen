@@ -48,7 +48,7 @@ install(FILES "${PROJECT_BINARY_DIR}/sqlgen_config.h"
 install(FILES Database.h DatabaseCursor.h DatabaseLogger.h DatabaseQuery.h sqlite/sqlite3.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/sqlite-cpp-sqlgen)
 
-install(FILES "${CMAKE_SOURCE_DIR}/LICENSE" DESTINATION ${CMAKE_INSTALL_DATADIR}/sqlite-cpp-sqlgen/copyright)
+install(FILES "${CMAKE_SOURCE_DIR}/LICENSE" DESTINATION ${CMAKE_INSTALL_DATADIR}/sqlite-cpp-sqlgen RENAME "copyright")
 
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
