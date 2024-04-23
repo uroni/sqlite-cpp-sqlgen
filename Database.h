@@ -47,21 +47,21 @@ namespace sqlgen
 
 		virtual void beginReadTransaction();
 		virtual void beginWriteTransaction();
-		virtual void endTransaction(void);
+		virtual void endTransaction();
 		virtual void rollbackTransaction();
 
 		virtual DatabaseQuery prepare(std::string pQuery);
 
-		virtual long long int getLastInsertID(void);
+		virtual long long int getLastInsertID();
 
-		sqlite3* getDatabase(void);
+		sqlite3* getDatabase();
 
-		bool isInTransaction(void);
+		bool isInTransaction();
 
-		virtual std::string getEngineName(void);
+		virtual std::string getEngineName();
 
-		virtual void detachDBs(void);
-		virtual void attachDBs(void);
+		virtual void detachDBs();
+		virtual void attachDBs();
 
 		virtual void freeMemory();
 
@@ -78,6 +78,85 @@ namespace sqlgen
 
 		std::vector<std::pair<std::string, std::string> > attached_dbs;
 		str_map params;
+	};
+
+	class ScopedWriteTransaction
+	{
+	public:
+		ScopedWriteTransaction(Database* db = nullptr)
+			: db(db) {
+			if (db != nullptr) db->beginWriteTransaction();
+		}
+		~ScopedWriteTransaction() {
+			if (db != nullptr) db->endTransaction();
+		}
+
+		void reset(Database* pdb)
+		{
+			if (db != nullptr) {
+				db->endTransaction();
+			}
+			db = pdb;
+			if (db != nullptr) {
+				db->beginWriteTransaction();
+			}
+		}
+
+		void restart() {
+			if (db != nullptr) {
+				db->endTransaction();
+				db->beginWriteTransaction();
+			}
+		}
+
+		void rollback() {
+			if (db != nullptr) {
+				db->rollbackTransaction();
+			}
+		}
+
+		void end() {
+			if (db != nullptr) db->endTransaction();
+			db = nullptr;
+		}
+	private:
+		Database* db;
+	};
+
+	class ScopedSynchronous
+	{
+	public:
+		ScopedSynchronous(Database* pdb = nullptr)
+			:db(nullptr)
+		{
+			reset(pdb);
+		}
+
+		~ScopedSynchronous()
+		{
+			if (db != nullptr)
+			{
+				db->write("PRAGMA synchronous = " + synchronous);
+			}
+		}
+
+		void reset(Database* pdb)
+		{
+			if (db != nullptr)
+			{
+				db->write("PRAGMA synchronous = " + synchronous);
+			}
+			db = pdb;
+			if (db != nullptr)
+			{
+				synchronous = db->read("PRAGMA synchronous")[0]["synchronous"];
+				db->write("PRAGMA synchronous=FULL");
+			}
+		}
+
+	private:
+		Database* db;
+		std::string synchronous;
 	};
 
 }
