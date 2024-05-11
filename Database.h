@@ -80,14 +80,14 @@ namespace sqlgen
 		str_map params;
 	};
 
-	class ScopedWriteTransaction
+	class ScopedAutoCommitWriteTransaction
 	{
 	public:
-		ScopedWriteTransaction(Database* db = nullptr)
+		ScopedAutoCommitWriteTransaction(Database* db = nullptr)
 			: db(db) {
 			if (db != nullptr) db->beginWriteTransaction();
 		}
-		~ScopedWriteTransaction() {
+		~ScopedAutoCommitWriteTransaction() {
 			if (db != nullptr) db->endTransaction();
 		}
 
@@ -110,12 +110,55 @@ namespace sqlgen
 		}
 
 		void rollback() {
-			if (db != nullptr) {
+			if (db != nullptr)
 				db->rollbackTransaction();
-			}
+			db = nullptr;
 		}
 
 		void end() {
+			if (db != nullptr) db->endTransaction();
+			db = nullptr;
+		}
+	private:
+		Database* db;
+	};
+
+	class ScopedManualCommitWriteTransaction
+	{
+	public:
+		ScopedManualCommitWriteTransaction(Database* db = nullptr)
+			: db(db) {
+			if (db != nullptr) db->beginWriteTransaction();
+		}
+		~ScopedManualCommitWriteTransaction() {
+			if (db != nullptr) db->rollbackTransaction();
+		}
+
+		void reset(Database* pdb)
+		{
+			if (db != nullptr) {
+				db->rollbackTransaction();
+			}
+			db = pdb;
+			if (db != nullptr) {
+				db->beginWriteTransaction();
+			}
+		}
+
+		void restart() {
+			if (db != nullptr) {
+				db->rollbackTransaction();
+				db->beginWriteTransaction();
+			}
+		}
+
+		void rollback() {
+			if (db != nullptr)
+				db->rollbackTransaction();
+			db = nullptr;
+		}
+
+		void commit() {
 			if (db != nullptr) db->endTransaction();
 			db = nullptr;
 		}
