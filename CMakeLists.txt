@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(sqlite-cpp-sqlgen VERSION 0.2)
+project(sqlite-cpp-sqlgen VERSION 0.5)
 
 include(GNUInstallDirs)
 
