@@ -1118,7 +1118,7 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, const GenCo
 	{
 		if (!return_optional)
 		{
-			code += t + "const auto hasNext = cursor.next()" + nl;
+			code += t + "const auto hasNext = cursor.next();" + nl;
 			code += t + "assert(hasNext);" + nl;
 		}
 		else
