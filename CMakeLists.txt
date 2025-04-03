@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.10...4.0)
 
 project(sqlite-cpp-sqlgen VERSION 0.5)
 
