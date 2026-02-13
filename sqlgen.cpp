@@ -889,7 +889,10 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, const GenCo
 
 	if (return_optional)
 	{
-		return_outer = "std::optional<" + (classname.empty()?"":classname+"::")+return_type + ">";
+		bool add_classname = return_type!="std::string" && return_type!="void" && return_type!="int"
+			&& return_type!="bool" && return_type!="int64_t";
+			
+		return_outer = "std::optional<" + ((classname.empty() || !add_classname)?"":classname+"::")+return_type + ">";
 		return_type = "std::optional<" + return_type + ">";
 	}
 
