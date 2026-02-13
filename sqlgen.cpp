@@ -1058,6 +1058,7 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, const GenCo
 			code+=t + struct_name+" ret = { ";
 			if(!use_cond)
 			{		
+				code+="false, ";
 				for(size_t i=0;i<return_types.size();++i)
 				{
 					if(return_types[i].type=="int" || return_types[i].type=="int64" || return_types[i].type=="int64_t")
