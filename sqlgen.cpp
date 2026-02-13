@@ -745,8 +745,8 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, const GenCo
 		}
 		else
 		{
-			generateStructure(struct_name, return_types, config, gen_data, return_optional);
-			use_exists=return_optional;
+			generateStructure(struct_name, return_types, config, gen_data, !return_optional);
+			use_exists=!return_optional;
 		}
 	}
 
