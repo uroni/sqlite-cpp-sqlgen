@@ -745,8 +745,8 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, const GenCo
 		}
 		else
 		{
-			generateStructure(struct_name, return_types, config, gen_data, true);
-			use_exists=true;
+			generateStructure(struct_name, return_types, config, gen_data, return_optional);
+			use_exists=return_optional;
 		}
 	}
 
@@ -1053,17 +1053,39 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, const GenCo
 	}
 	else if(!return_types.empty() && !use_raw)
 	{
-		code+=t + struct_name+" ret = { ";
-		if(!use_cond)
+		if(use_exists)
 		{
-			code+="false, ";
-			for(size_t i=0;i<return_types.size();++i)
+			code+=t + struct_name+" ret = { ";
+			if(!use_cond)
+			{		
+				for(size_t i=0;i<return_types.size();++i)
+				{
+					if(return_types[i].type=="int" || return_types[i].type=="int64" || return_types[i].type=="int64_t")
+					{
+						code+="0";
+					}
+					else if(return_types[i].type=="blob")
+					{
+						code+="\"\"";
+					}
+					else
+					{
+						code+="\"\"";
+					}
+					if(i+1<return_types.size())
+					{
+						code+=", ";
+					}
+				}
+			}
+			else
 			{
-				if(return_types[i].type=="int" || return_types[i].type=="int64" || return_types[i].type=="int64_t")
+				code+="false, ";
+				if(return_types[0].type=="int" || return_types[0].type=="int64" || return_types[0].type=="int64_t")
 				{
 					code+="0";
 				}
-				else if(return_types[i].type=="blob")
+				else if(return_types[0].type=="blob")
 				{
 					code+="\"\"";
 				}
@@ -1071,34 +1093,18 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, const GenCo
 				{
 					code+="\"\"";
 				}
-				if(i+1<return_types.size())
-				{
-					code+=", ";
-				}
 			}
+			code+=" };" + nl;
 		}
-		else
-		{
-			code+="false, ";
-			if(return_types[0].type=="int" || return_types[0].type=="int64" || return_types[0].type=="int64_t")
-			{
-				code+="0";
-			}
-			else if(return_types[0].type=="blob")
-			{
-				code+="\"\"";
-			}
-			else
-			{
-				code+="\"\"";
-			}
-		}
-		code+=" };" + nl;
 		code+=t + "if(cursor.next())" + nl;
 		code+=t + "{" + nl;
 		if(use_exists)
 		{
 			code+=t + t + "ret.exists=true;" + nl;
+		}
+		else
+		{
+			code+=t + t + return_type+" ret;" + nl;
 		}
 		if(!use_cond)
 		{
@@ -1114,6 +1120,13 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, const GenCo
 				return_cols)+", ret.value);" + nl;
 		}
 		code+=t + "}" + nl;	
+		if(!use_exists)
+		{
+			code+=t + "else" + nl;
+			code+=t + "{" + nl;
+			code+=t + t + "return {};" + nl;
+			code+=t + "}" + nl;
+		}
 	}
 	else if(return_types.size()==1)
 	{
