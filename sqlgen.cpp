@@ -956,6 +956,7 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, const GenCo
 
 	bool has_return=false;
 	bool need_return = true;
+	bool need_nullopt_return = false;
 
 	if(stmt_type==StatementType_Select || !return_types.empty())
 	{
@@ -1105,7 +1106,7 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, const GenCo
 		}
 		else
 		{
-			code+=t + t + return_type+" ret;" + nl;
+			code+=t + t + struct_name+" ret;" + nl;
 		}
 		if(!use_cond)
 		{
@@ -1122,12 +1123,7 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, const GenCo
 		}
 		code+=t + "}" + nl;	
 		if(!use_exists)
-		{
-			code+=t + "else" + nl;
-			code+=t + "{" + nl;
-			code+=t + t + "return {};" + nl;
-			code+=t + "}" + nl;
-		}
+			need_nullopt_return = true;
 	}
 	else if(return_types.size()==1)
 	{
@@ -1172,7 +1168,9 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, const GenCo
 		code += t + "if(cursor->has_error())" + nl;
 		code += t + t + "return {};" + nl;
 	}*/
-	if(need_return)
+	if (need_nullopt_return)
+		code += t + "return {};" + nl;
+	else if(need_return)
 		code += t + "return ret;" + nl;
 	code+="}";
 	return AnnotatedCode(input.annotations, code);
