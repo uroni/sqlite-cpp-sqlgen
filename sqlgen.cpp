@@ -639,6 +639,7 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, const GenCo
 		}
 
 		return_type = return_type.substr(first_c+1, last_c - first_c - 1);
+		struct_name = return_type;
 	}
 
 	bool return_vector=false;
