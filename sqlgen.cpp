@@ -1121,9 +1121,12 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, const GenCo
 			code += t + t + "cursor.get("+getReturnCol(return_types[0].name,
 				return_cols)+", ret.value);" + nl;
 		}
-		code+=t + "}" + nl;	
 		if(!use_exists)
+		{
 			need_nullopt_return = true;
+			code+=t + t + "return ret;" + nl;
+		}
+		code+=t + "}" + nl;			
 	}
 	else if(return_types.size()==1)
 	{
