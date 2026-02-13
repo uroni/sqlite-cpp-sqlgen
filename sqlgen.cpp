@@ -889,7 +889,7 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, const GenCo
 
 	if (return_optional)
 	{
-		return_outer = "std::optional<" + return_type + ">";
+		return_outer = "std::optional<" + (classname.empty()?"":classname+"::")+return_type + ">";
 		return_type = "std::optional<" + return_type + ">";
 	}
 
@@ -1056,7 +1056,7 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, const GenCo
 	{
 		if(use_exists)
 		{
-			code+=t + struct_name+" ret = { ";
+			code+=t + (classname.empty()?"":classname+"::")+struct_name+" ret = { ";
 			if(!use_cond)
 			{		
 				code+="false, ";
@@ -1124,6 +1124,10 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, const GenCo
 		if(!use_exists)
 		{
 			need_nullopt_return = true;
+			if (!params.empty())
+			{
+				code += t + t + query_name + ".reset();" + nl;
+			}
 			code+=t + t + "return ret;" + nl;
 		}
 		code+=t + "}" + nl;			
