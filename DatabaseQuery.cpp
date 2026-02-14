@@ -102,6 +102,8 @@ void DatabaseQuery::reset()
 	sqlite3_reset(ps);
 	//sqlite3_clear_bindings(ps);
 	curr_idx=1;
+	if (_cursor)
+		_cursor->reset();
 }
 
 bool DatabaseQuery::write(int timeoutms)
