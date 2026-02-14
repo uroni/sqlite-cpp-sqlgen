@@ -1131,6 +1131,10 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, const GenCo
 			{
 				code += t + t + query_name + ".reset();" + nl;
 			}
+			else
+			{
+				code += t + t + "cursor.shutdown();" + nl;
+			}
 			code+=t + t + "return ret;" + nl;
 		}
 		code+=t + "}" + nl;			
@@ -1149,6 +1153,10 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, const GenCo
 			if (!params.empty())
 			{
 				code += t + t + query_name + ".reset();" + nl;
+			}
+			else
+			{
+				code += t + t + "cursor.shutdown();" + nl;
 			}
 			code += t + t + "return {};" + nl;
 			code += t + "}" + nl;
@@ -1172,6 +1180,10 @@ AnnotatedCode generateSqlFunction(Database& db, AnnotatedCode input, const GenCo
 	if (!params.empty())
 	{
 		code += t + query_name + ".reset();" + nl;
+	}
+	else
+	{
+		code += t + "cursor.shutdown();" + nl;
 	}
 	/*if (return_optional)
 	{
